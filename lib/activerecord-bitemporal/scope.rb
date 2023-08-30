@@ -463,15 +463,29 @@ module ActiveRecord::Bitemporal
             { where: "#{table.name}.valid_from" },
             { where: "#{table.name}.valid_to" }
           ]
+          valid_datetime2 = replace_valid_datetime(valid_datetime)
           relation = relation
-            ._valid_from_lteq(valid_datetime || datetime, without_ignore: true)
-            ._valid_to_gt(valid_datetime || datetime, without_ignore: true)
+            ._valid_from_lteq(valid_datetime2 || datetime, without_ignore: true)
+            ._valid_to_gt(valid_datetime2 || datetime, without_ignore: true)
         else
           relation.tap { |relation| relation.without_valid_datetime unless ActiveRecord::Bitemporal.valid_datetime }
         end
 
         relation
       }
+
+      def self.replace_valid_datetime(valid_datetime)
+        return if valid_datetime.nil?
+        if @force_valid_at
+          @force_valid_at.call(valid_datetime)
+        else
+          valid_datetime
+        end
+      end
+
+      def self.force_valid_at(&block)
+        @force_valid_at = block
+      end
 
       scope :except_bitemporal_default_scope, -> {
         scope = all
